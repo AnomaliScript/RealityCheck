@@ -1,4 +1,11 @@
 import {
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  signInAnonymously,
+  updateProfile,
+} from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
   createContext,
   useCallback,
   useContext,
@@ -8,31 +15,17 @@ import {
   type ReactNode,
 } from "react";
 
-/**
- * STUB. Replace with Firebase Auth once services/firebase.ts exists.
- *
- * When you do, use initializeAuth — NOT getAuth, which doesn't persist on
- * React Native and signs users out on every cold start:
- *
- *   import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
- *   import AsyncStorage from '@react-native-async-storage/async-storage';
- *   const auth = initializeAuth(app, {
- *     persistence: getReactNativePersistence(AsyncStorage),
- *   });
- *
- * The shape below matches what onAuthStateChanged gives you, so the swap
- * stays local to this file.
- */
+import { auth, db } from "@/services/firebase";
 
 export type User = {
   uid: string;
-  displayName: string | null;
+  displayName: string;
 };
 
 type AuthValue = {
   user: User | null;
   isLoading: boolean;
-  signIn: () => Promise<void>;
+  signIn: (displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -42,18 +35,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Stands in for onAuthStateChanged resolving on launch.
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 250);
-    return () => clearTimeout(t);
+    return onAuthStateChanged(auth, (fbUser) => {
+      // No name yet means sign-up didn't finish, so treat it as signed out.
+      setUser(
+        fbUser && fbUser.displayName
+          ? { uid: fbUser.uid, displayName: fbUser.displayName }
+          : null,
+      );
+      setIsLoading(false);
+    });
   }, []);
 
-  const signIn = useCallback(async () => {
-    setUser({ uid: "dev-user", displayName: "You" });
+  const signIn = useCallback(async (displayName: string) => {
+    const name = displayName.trim().slice(0, 30);
+
+    // Reuse an account from a half-finished sign-up instead of making a new one.
+    const fbUser = auth.currentUser ?? (await signInAnonymously(auth)).user;
+
+    await setDoc(
+      doc(db, "users", fbUser.uid),
+      { displayName: name, createdAt: serverTimestamp() },
+      { merge: true },
+    );
+    await updateProfile(fbUser, { displayName: name });
+
+    setUser({ uid: fbUser.uid, displayName: name });
   }, []);
 
   const signOut = useCallback(async () => {
-    setUser(null);
+    await firebaseSignOut(auth);
   }, []);
 
   const value = useMemo(

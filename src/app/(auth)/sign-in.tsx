@@ -1,9 +1,12 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,12 +15,21 @@ import { useAuth } from "@/features/auth/AuthContext";
 
 export default function SignIn() {
   const { signIn } = useAuth();
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleSignIn() {
+  const ready = name.trim().length > 0 && !busy;
+
+  async function handleContinue() {
+    if (!ready) return;
     setBusy(true);
+    setError(null);
     try {
-      await signIn();
+      await signIn(name);
+    } catch (e) {
+      console.warn(e);
+      setError("Couldn't sign in. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -25,38 +37,57 @@ export default function SignIn() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.hero}>
-        <Text style={styles.wordmark}>RealityCheck</Text>
-        <Text style={styles.tagline}>Quiet until your friends are here.</Text>
-      </View>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.hero}>
+          <Text style={styles.wordmark}>RealityCheck</Text>
+          <Text style={styles.tagline}>Quiet until your friends are here.</Text>
+        </View>
 
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={handleSignIn}
-          disabled={busy}
-        >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonLabel}>Continue with Apple</Text>
-          )}
-        </Pressable>
+        <View style={styles.footer}>
+          <Text style={styles.label}>What do your friends call you?</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name"
+            placeholderTextColor="#3A3A46"
+            maxLength={30}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={handleContinue}
+            style={styles.input}
+          />
 
-        <Text style={styles.legal}>
-          RealityCheck never collects your location and never reads which apps
-          you use.
-        </Text>
-      </View>
+          <Pressable
+            style={[styles.button, !ready && styles.buttonDisabled]}
+            onPress={handleContinue}
+            disabled={!ready}
+          >
+            {busy ? (
+              <ActivityIndicator color="#0B0B0F" />
+            ) : (
+              <Text style={styles.buttonLabel}>Continue</Text>
+            )}
+          </Pressable>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Text style={styles.legal}>
+            RealityCheck never collects your location and never reads which apps
+            you use.
+          </Text>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0B0B0F", paddingHorizontal: 24 },
+  flex: { flex: 1 },
   hero: { flex: 1, justifyContent: "center" },
   wordmark: {
     color: "#fff",
@@ -65,7 +96,18 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   tagline: { color: "#8E8E9A", fontSize: 17, marginTop: 10, lineHeight: 24 },
-  footer: { paddingBottom: 16, gap: 16 },
+  footer: { paddingBottom: 16, gap: 12 },
+  label: { color: "#8E8E9A", fontSize: 15 },
+  input: {
+    height: 54,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#2E2E3A",
+    backgroundColor: "#15151C",
+    paddingHorizontal: 16,
+    color: "#fff",
+    fontSize: 17,
+  },
   button: {
     backgroundColor: "#fff",
     borderRadius: 14,
@@ -73,8 +115,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  buttonPressed: { opacity: 0.75 },
+  buttonDisabled: { opacity: 0.4 },
   buttonLabel: { color: "#0B0B0F", fontSize: 17, fontWeight: "600" },
+  error: { color: "#FF5A5F", fontSize: 14, textAlign: "center" },
   legal: {
     color: "#5C5C68",
     fontSize: 13,

@@ -68,6 +68,15 @@ function RootNavigator() {
             title: "Settings",
           }}
         />
+
+        <Stack.Screen
+          name="pair"
+          options={{
+            presentation: "modal",
+            headerShown: true,
+            title: "Pair a friend",
+          }}
+        />
       </Stack.Protected>
     </Stack>
   );

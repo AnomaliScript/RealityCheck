@@ -12,18 +12,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useFriends } from "@/features/friends/useFriends";
 import { fakeEngine } from "@/proximity/fakeEngine";
 import type { SessionPhase } from "@/proximity/types";
 import { useProximity } from "@/proximity/useProximity";
-
-type Friend = { id: string; name: string };
-
-const FRIENDS: Friend[] = [
-  { id: "1", name: "Maya" },
-  { id: "2", name: "Dev" },
-  { id: "3", name: "Priya" },
-  { id: "4", name: "Sam" },
-];
 
 const PHRASE_ON = "ACTIVE ";
 const PHRASE_OFF = "STANDBY ";
@@ -31,6 +23,7 @@ const PHRASE_OFF = "STANDBY ";
 export default function Connect() {
   const router = useRouter();
   const { phase, present, cooldownLeftMs } = useProximity();
+  const { friends, loading } = useFriends();
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -55,34 +48,49 @@ export default function Connect() {
         <Text style={styles.sectionLabel}>Your people</Text>
 
         <View style={styles.card}>
-          {FRIENDS.map((friend, i) => {
-            const nearby = present.includes(friend.id);
-            return (
-              <Pressable
-                key={friend.id}
-                onPress={() => {
-                  if (__DEV__) {
-                    fakeEngine.setPresent(
-                      friend.id,
-                      !fakeEngine.isPresent(friend.id),
-                    );
-                  }
-                }}
-                style={({ pressed }) => [
-                  styles.row,
-                  i > 0 && styles.rowDivider,
-                  pressed && styles.rowPressed,
-                ]}
-              >
-                <View
-                  style={[styles.dot, nearby ? styles.dotOn : styles.dotOff]}
-                />
-                <Text style={styles.rowName}>{friend.name}</Text>
-                <PresenceLabel nearby={nearby} />
-              </Pressable>
-            );
-          })}
+          {friends.length === 0 ? (
+            <Text style={styles.emptyRow}>
+              {loading
+                ? "Loading…"
+                : "No friends yet. Pair with someone to get started."}
+            </Text>
+          ) : (
+            friends.map((friend, i) => {
+              const nearby = present.includes(friend.id);
+              return (
+                <Pressable
+                  key={friend.id}
+                  onPress={() => {
+                    if (__DEV__) {
+                      fakeEngine.setPresent(
+                        friend.id,
+                        !fakeEngine.isPresent(friend.id),
+                      );
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.row,
+                    i > 0 && styles.rowDivider,
+                    pressed && styles.rowPressed,
+                  ]}
+                >
+                  <View
+                    style={[styles.dot, nearby ? styles.dotOn : styles.dotOff]}
+                  />
+                  <Text style={styles.rowName}>{friend.name}</Text>
+                  <PresenceLabel nearby={nearby} />
+                </Pressable>
+              );
+            })
+          )}
         </View>
+
+        <Pressable
+          style={styles.pairButton}
+          onPress={() => router.push("/pair")}
+        >
+          <Text style={styles.pairLabel}>Pair a friend</Text>
+        </Pressable>
 
         {__DEV__ && (
           <Text style={styles.devHint}>
@@ -390,4 +398,11 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   flipNearby: { color: "#35C77B" },
+
+  emptyRow: {
+    color: "#6E6E7A",
+    fontSize: 15,
+    padding: 16,
+    textAlign: "center",
+  },
 });

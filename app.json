@@ -40,6 +40,12 @@
           "modes": ["peripheral", "central"],
           "bluetoothAlwaysPermission": "RealityCheck uses Bluetooth to detect when your friends are nearby. It never collects your location."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "RealityCheck uses the camera to scan a friend's pairing code and to capture challenge photos."
+        }
       ]
     ],
     "experiments": {
