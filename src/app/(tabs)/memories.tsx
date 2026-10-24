@@ -1,35 +1,89 @@
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// TODO: swap PLACEHOLDER for a Firestore query scoped to the user's groups.
+import { useAuth } from "@/features/auth/AuthContext";
+import { deleteMemory } from "@/features/challenges/challenges";
+import { useMemories, type Memory } from "@/features/memories/useMemories";
 
-type Memory = { id: string; prompt: string; when: string; who: string[] };
-
-const PLACEHOLDER: Memory[] = [];
+function formatWhen(ms: number) {
+  const d = new Date(ms);
+  return (
+    d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " · " +
+    d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+  );
+}
 
 export default function Memories() {
+  const { user } = useAuth();
+  const { memories, loading } = useMemories();
+
+  function confirmDelete(m: Memory) {
+    if (m.authorUid !== user?.uid) return;
+    Alert.alert("Delete this memory?", "It will be removed for everyone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          deleteMemory(m.id).catch((e) => console.warn(e));
+        },
+      },
+    ]);
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.title}>Memories</Text>
       </View>
 
-      <FlatList
-        data={PLACEHOLDER}
-        keyExtractor={(m) => m.id}
-        contentContainerStyle={
-          PLACEHOLDER.length === 0 ? styles.emptyWrap : styles.list
-        }
-        ListEmptyComponent={<Empty />}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.prompt}>{item.prompt}</Text>
-            <Text style={styles.meta}>
-              {item.who.join(", ")} · {item.when}
-            </Text>
-          </View>
-        )}
-      />
+      {loading ? (
+        <View style={styles.empty}>
+          <ActivityIndicator color="#fff" />
+        </View>
+      ) : (
+        <FlatList
+          data={memories}
+          keyExtractor={(m) => m.id}
+          contentContainerStyle={
+            memories.length === 0 ? styles.emptyWrap : styles.list
+          }
+          ListEmptyComponent={<Empty />}
+          renderItem={({ item }) => (
+            <Pressable
+              onLongPress={() => confirmDelete(item)}
+              style={styles.card}
+            >
+              {item.photo ? (
+                <Image
+                  source={{ uri: `data:image/jpeg;base64,${item.photo}` }}
+                  style={styles.photo}
+                  resizeMode="cover"
+                />
+              ) : null}
+              <View style={styles.cardBody}>
+                <Text style={styles.prompt}>{item.prompt}</Text>
+                {item.text ? (
+                  <Text style={styles.answer}>{item.text}</Text>
+                ) : null}
+                <Text style={styles.meta}>
+                  {item.authorName} · {formatWhen(item.createdAt)}
+                </Text>
+              </View>
+            </Pressable>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -55,7 +109,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
   },
 
-  list: { padding: 20, gap: 12 },
+  list: { padding: 20, gap: 16, paddingBottom: 48 },
   emptyWrap: { flexGrow: 1 },
   empty: {
     flex: 1,
@@ -74,12 +128,14 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: "#15151C",
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: "#23232D",
-    padding: 16,
-    gap: 6,
+    overflow: "hidden",
   },
-  prompt: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  meta: { color: "#6E6E7A", fontSize: 13 },
+  photo: { width: "100%", aspectRatio: 4 / 5, backgroundColor: "#000" },
+  cardBody: { padding: 16, gap: 6 },
+  prompt: { color: "#8E8E9A", fontSize: 14, lineHeight: 19 },
+  answer: { color: "#fff", fontSize: 18, lineHeight: 25, fontWeight: "500" },
+  meta: { color: "#5C5C68", fontSize: 13, marginTop: 2 },
 });

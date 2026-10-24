@@ -12,18 +12,44 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useFriends } from "@/features/friends/useFriends";
+import { useAuth } from "@/features/auth/AuthContext";
+import { leaveHangout } from "@/features/hangouts/hangouts";
+import { useHangout, type Member } from "@/features/hangouts/useHangout";
+
 import { fakeEngine } from "@/proximity/fakeEngine";
 import type { SessionPhase } from "@/proximity/types";
 import { useProximity } from "@/proximity/useProximity";
+
+import { issueChallenge } from "@/features/challenges/challenges";
+import { useChallengeTimer } from "@/features/challenges/useChallengeTimer";
 
 const PHRASE_ON = "ACTIVE ";
 const PHRASE_OFF = "STANDBY ";
 
 export default function Connect() {
   const router = useRouter();
+  const { user } = useAuth();
   const { phase, present, cooldownLeftMs } = useProximity();
-  const { friends, loading } = useFriends();
+  const { hangout, loading } = useHangout();
+  useChallengeTimer(hangout, phase);
+  const [simFriends, setSimFriends] = useState<Member[]>([]);
+
+  // Everyone in the hangout except you, plus any dev-only simulated friends.
+  const others = hangout
+    ? hangout.members.filter((m) => m.id !== user?.uid)
+    : [];
+  const people = [...others, ...simFriends];
+
+  // The cooldown ran out and nobody came back: you've left the radius, so you
+  // leave the hangout. This is the cooldown from your original design.
+  const prevPhase = useRef(phase);
+  useEffect(() => {
+    const was = prevPhase.current;
+    prevPhase.current = phase;
+    if (hangout && user && was === "cooldown" && phase === "idle") {
+      leaveHangout(hangout.id, user.uid).catch((e) => console.warn(e));
+    }
+  }, [phase, hangout, user]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -40,31 +66,36 @@ export default function Connect() {
         </View>
 
         <StatusStrip
+          inHangout={!!hangout}
           phase={phase}
           count={present.length}
           cooldownLeftMs={cooldownLeftMs}
         />
 
-        <Text style={styles.sectionLabel}>Your people</Text>
+        <Text style={styles.sectionLabel}>
+          {hangout ? "In this hangout" : "Your people"}
+        </Text>
 
         <View style={styles.card}>
-          {friends.length === 0 ? (
+          {people.length === 0 ? (
             <Text style={styles.emptyRow}>
               {loading
                 ? "Loading…"
-                : "No friends yet. Pair with someone to get started."}
+                : hangout
+                  ? `Nobody else yet. Share code ${hangout.code} to invite friends.`
+                  : "Not in a hangout. Start one, or join a friend’s with their code."}
             </Text>
           ) : (
-            friends.map((friend, i) => {
-              const nearby = present.includes(friend.id);
+            people.map((person, i) => {
+              const nearby = present.includes(person.id);
               return (
                 <Pressable
-                  key={friend.id}
+                  key={person.id}
                   onPress={() => {
                     if (__DEV__) {
                       fakeEngine.setPresent(
-                        friend.id,
-                        !fakeEngine.isPresent(friend.id),
+                        person.id,
+                        !fakeEngine.isPresent(person.id),
                       );
                     }
                   }}
@@ -77,7 +108,7 @@ export default function Connect() {
                   <View
                     style={[styles.dot, nearby ? styles.dotOn : styles.dotOff]}
                   />
-                  <Text style={styles.rowName}>{friend.name}</Text>
+                  <Text style={styles.rowName}>{person.name}</Text>
                   <PresenceLabel nearby={nearby} />
                 </Pressable>
               );
@@ -85,21 +116,49 @@ export default function Connect() {
           )}
         </View>
 
-        <Pressable
-          style={styles.pairButton}
-          onPress={() => router.push("/pair")}
-        >
-          <Text style={styles.pairLabel}>Pair a friend</Text>
-        </Pressable>
-
-        {__DEV__ && (
+        {__DEV__ && people.length > 0 && (
           <Text style={styles.devHint}>
-            Dev mode: tap a friend to simulate them arriving or leaving.
+            Dev mode: tap someone to simulate them arriving or leaving.
           </Text>
         )}
 
-        <Pressable style={styles.pairButton}>
-          <Text style={styles.pairLabel}>Pair a friend</Text>
+        {__DEV__ && (
+          <Pressable
+            style={styles.devButton}
+            onPress={() => {
+              const n = simFriends.length + 1;
+              setSimFriends([
+                ...simFriends,
+                { id: `sim-${n}`, name: `Test friend ${n}` },
+              ]);
+            }}
+          >
+            <Text style={styles.devButtonLabel}>
+              + Add a simulated friend (dev only)
+            </Text>
+          </Pressable>
+        )}
+
+        {hangout ? (
+          <Pressable
+            style={styles.pairButton}
+            onPress={() => {
+              issueChallenge(hangout.id).catch((e) => console.warn(e));
+            }}
+          >
+            <Text style={styles.pairLabel}>Pull a challenge</Text>
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          style={styles.pairButton}
+          onPress={() => router.push("/hangout")}
+        >
+          <Text style={styles.pairLabel}>
+            {hangout
+              ? `Hangout code · ${hangout.code}`
+              : "Start or join or leave a hangout"}
+          </Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -134,7 +193,7 @@ function Marquee({
 
   // One phrase of lead on the left, enough to fill the window,
   // one more that slides in during each pass, plus a spare.
-  const copies = itemW > 0 && windowW > 0 ? Math.ceil(windowW / itemW) + 3 : 3;
+  const copies = itemW > 0 && windowW > 0 ? Math.ceil(windowW / itemW) + 6 : 6;
 
   useEffect(() => {
     if (itemW === 0) return;
@@ -201,32 +260,6 @@ function Marquee({
   );
 }
 
-function stripCopy(phase: SessionPhase, count: number, secondsLeft: number) {
-  const friends = `${count} ${count === 1 ? "friend" : "friends"}`;
-  switch (phase) {
-    case "idle":
-      return {
-        title: "Nobody nearby",
-        body: "RealityCheck does nothing until your people are close.",
-      };
-    case "forming":
-      return {
-        title: "Friends nearby",
-        body: `${friends} in range. A hangout starts if you stick around.`,
-      };
-    case "active":
-      return {
-        title: "Hangout in progress",
-        body: `${friends} in range. RealityCheck stays quiet until it has a reason not to.`,
-      };
-    case "cooldown":
-      return {
-        title: "Wrapping up",
-        body: `Everyone's out of range. The hangout ends in ${secondsLeft}s unless someone comes back.`,
-      };
-  }
-}
-
 const STATUS_LINE = 20; // one line of the status text, in px
 
 /** "Away" / "Nearby" with a vertical back-in / back-out flip between them. */
@@ -259,17 +292,58 @@ function PresenceLabel({ nearby }: { nearby: boolean }) {
   );
 }
 
+function stripCopy(
+  inHangout: boolean,
+  phase: SessionPhase,
+  count: number,
+  secondsLeft: number,
+) {
+  if (!inHangout) {
+    return {
+      title: "No hangout",
+      body: "Start one or join a friend’s code. RealityCheck does nothing until then.",
+    };
+  }
+
+  const friends = `${count} ${count === 1 ? "friend" : "friends"}`;
+  switch (phase) {
+    case "idle":
+      return {
+        title: "Waiting for your people",
+        body: "Nobody in this hangout is in range yet.",
+      };
+    case "forming":
+      return {
+        title: "Friends nearby",
+        body: `${friends} in range. The hangout goes live if you stick around.`,
+      };
+    case "active":
+      return {
+        title: "Hangout in progress",
+        body: `${friends} in range. RealityCheck stays quiet until it has a reason not to.`,
+      };
+    case "cooldown":
+      return {
+        title: "Wrapping up",
+        body: `You’re out of range of everyone. You’ll leave the hangout in ${secondsLeft}s unless someone comes back.`,
+      };
+  }
+}
+
 function StatusStrip({
+  inHangout,
   phase,
   count,
   cooldownLeftMs,
 }: {
+  inHangout: boolean;
   phase: SessionPhase;
   count: number;
   cooldownLeftMs: number;
 }) {
-  const live = phase === "active" || phase === "cooldown";
+  const live = inHangout && (phase === "active" || phase === "cooldown");
   const { title, body } = stripCopy(
+    inHangout,
     phase,
     count,
     Math.ceil(cooldownLeftMs / 1000),
@@ -405,4 +479,17 @@ const styles = StyleSheet.create({
     padding: 16,
     textAlign: "center",
   },
+
+  // Dev-only
+  devButton: {
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#2E2E3A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  devButtonLabel: { color: "#6E6E7A", fontSize: 14, fontWeight: "500" },
 });

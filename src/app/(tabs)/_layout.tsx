@@ -1,4 +1,4 @@
-import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/native-tabs";
 
 // SDK 57 path. In SDK 58+ this becomes 'expo-router/native-tabs'.
 export default function TabsLayout() {

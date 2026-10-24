@@ -24,9 +24,8 @@ function createAuth(): Auth {
     return initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
     });
-  } catch {
-    // Two cases land here, both fine: Fast Refresh re-ran this file and auth
-    // already exists, or we're on web, where the browser handles persistence.
+  } catch (e) {
+    console.log("[firebase] initializeAuth fell back to getAuth:", e);
     return getAuth(app);
   }
 }

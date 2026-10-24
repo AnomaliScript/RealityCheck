@@ -37,7 +37,10 @@
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": true,
-          "modes": ["peripheral", "central"],
+          "modes": [
+            "peripheral",
+            "central"
+          ],
           "bluetoothAlwaysPermission": "RealityCheck uses Bluetooth to detect when your friends are nearby. It never collects your location."
         }
       ],
@@ -46,7 +49,11 @@
         {
           "cameraPermission": "RealityCheck uses the camera to scan a friend's pairing code and to capture challenge photos."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

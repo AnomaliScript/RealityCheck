@@ -70,11 +70,11 @@ function RootNavigator() {
         />
 
         <Stack.Screen
-          name="pair"
+          name="hangout"
           options={{
             presentation: "modal",
             headerShown: true,
-            title: "Pair a friend",
+            title: "Hangout",
           }}
         />
       </Stack.Protected>
