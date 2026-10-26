@@ -29,8 +29,11 @@ const PHRASE_OFF = "STANDBY ";
 export default function Connect() {
   const router = useRouter();
   const { user } = useAuth();
-  const { phase, present, cooldownLeftMs } = useProximity();
   const { hangout, loading } = useHangout();
+  const { phase, present, cooldownLeftMs, gpsStatus } = useProximity(
+    hangout?.id ?? null,
+    user?.uid ?? null,
+  );
   useChallengeTimer(hangout, phase);
   const [simFriends, setSimFriends] = useState<Member[]>([]);
 
@@ -71,6 +74,12 @@ export default function Connect() {
           count={present.length}
           cooldownLeftMs={cooldownLeftMs}
         />
+        {hangout && gpsStatus === "denied" ? (
+          <Text style={styles.devHint}>
+            Location is off, so RealityCheck can’t tell when friends are near.
+            Turn it on in iOS Settings → Expo Go → Location.
+          </Text>
+        ) : null}
 
         <Text style={styles.sectionLabel}>
           {hangout ? "In this hangout" : "Your people"}
@@ -165,10 +174,9 @@ export default function Connect() {
   );
 }
 
-/**
+/*
  * Infinitely side-scrolling text, news-ticker style.
- *
- * `speed` is pixels per second — higher is faster. The duration is derived
+ * `speed` is pixels per second, so higher is faster. The duration is derived
  * from the measured width so the speed stays constant no matter how long
  * the phrase is.
  */

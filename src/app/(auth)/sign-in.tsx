@@ -76,8 +76,8 @@ export default function SignIn() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Text style={styles.legal}>
-            RealityCheck never collects your location and never reads which apps
-            you use.
+            RealityCheck never reads which apps you use. During a hangout it
+            uses an encrypted version of your area, never your exact location.
           </Text>
         </View>
       </KeyboardAvoidingView>

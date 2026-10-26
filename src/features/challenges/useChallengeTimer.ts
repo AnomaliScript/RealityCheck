@@ -28,8 +28,7 @@ export function useChallengeTimer(
   const intervalMs = challengeIntervalMin * 60 * 1000;
 
   const hangoutId = hangout?.id ?? null;
-  const together =
-    !!hangout && (hangout.members.length >= 2 || phase === "active");
+  const together = !!hangout && phase === "active";
   const lastIssued = hangout?.challenge?.issuedAt ?? 0;
 
   // Remember when the group became "together", so the first challenge waits

@@ -69,8 +69,8 @@ export function scheduleChallengeReminder(at: number): Promise<void> {
 
     scheduledId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: "Challenge time",
-        body: "Your hangout’s been quiet a while. Open RealityCheck to see what’s next.",
+        title: "Your next RealityCheck's ready!",
+        body: "Open the app to see a new challenge and check in with your friends.",
         sound: true,
       },
       trigger: {

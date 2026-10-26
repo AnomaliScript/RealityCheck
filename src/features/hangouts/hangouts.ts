@@ -1,6 +1,7 @@
 import {
   Timestamp,
   collection,
+  deleteDoc,
   doc,
   runTransaction,
   serverTimestamp,
@@ -13,7 +14,7 @@ export const CODE_LENGTH = 6;
 export const HANGOUT_MAX_MS = 6 * 60 * 60 * 1000; // 6 hours
 export const QR_PREFIX = "realitycheck:join:";
 
-// No 0/O or 1/I/L, so codes survive being read aloud or squinted at.
+// No 0/O or 1/I/L, so codes can be read aloud or squinted at.
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 export type Me = { uid: string; displayName: string };
@@ -136,6 +137,11 @@ export async function leaveHangout(
 
     tx.update(ref, { members: members.filter((m) => m !== uid) });
   });
+
+  // Your scrambled area doesn't outlive your time in the hangout.
+  await deleteDoc(doc(db, "hangouts", hangoutId, "presence", uid)).catch((e) =>
+    console.warn("presence cleanup", e),
+  );
 }
 
 /** Host only: ends the hangout for everyone. */

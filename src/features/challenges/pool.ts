@@ -12,7 +12,8 @@ export const CHALLENGES: ChallengeDef[] = [
   {
     id: "p-group",
     kind: "photo",
-    prompt: "Get everyone in one photo without anyone looking at a screen.",
+    prompt:
+      "Take a picture of a phone taking a photo of everyone in the group.",
   },
   {
     id: "p-shadow",
@@ -28,7 +29,7 @@ export const CHALLENGES: ChallengeDef[] = [
     id: "p-color",
     kind: "photo",
     prompt:
-      "Find something the exact color of someone's shirt. Get both in the shot.",
+      "Find something the exact color of someone's shirt, and get both in the shot.",
   },
   {
     id: "p-first",
@@ -36,35 +37,39 @@ export const CHALLENGES: ChallengeDef[] = [
     prompt: "Photograph someone doing something they have never done before.",
   },
   {
-    id: "p-pose",
-    kind: "photo",
-    prompt: "Everyone strikes the same ridiculous pose. One photo.",
-  },
-  {
-    id: "t-best",
+    id: "t-food",
     kind: "text",
-    prompt: "What's the best thing that's happened since you all got here?",
+    prompt: "What's one food you could really go for right now?",
   },
   {
-    id: "t-quote",
+    id: "t-funny",
     kind: "text",
     prompt:
-      "Write down the funniest thing someone's said in the last ten minutes, word for word.",
+      "Write down the funniest thing someone's said/done in the last ten minutes, exactly as you remember it.",
   },
   {
     id: "t-predict",
     kind: "text",
-    prompt: "Predict where this group will be in five years. One sentence.",
+    prompt: "Predict where this group will be in five years in one sentence.",
   },
   {
-    id: "t-next",
+    id: "p-stranger",
+    kind: "photo",
+    prompt: "High five a random stranger.",
+  },
+  {
+    id: "t-plans",
     kind: "text",
-    prompt:
-      "Decide what you're all doing next. Write it down so nobody backs out.",
+    prompt: "What are you all planning to do after this?",
+  },
+  {
+    id: "t-stress",
+    kind: "text",
+    prompt: "What are you all feeling stressed about right now?",
   },
 ];
 
-/* A random challenge, avoiding an immediate repeat of the last one. */
+// A random challenge, avoiding an immediate repeat of the last one.
 export function pickChallenge(excludeId?: string | null): ChallengeDef {
   const notLast = (c: ChallengeDef) => c.id !== excludeId;
   const custom = getSettings().customChallenges.filter(notLast);

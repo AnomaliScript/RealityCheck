@@ -28,6 +28,7 @@ export default function Settings() {
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      contentInsetAdjustmentBehavior="automatic"
     >
       <Section title="Challenge interval">
         <View style={styles.chips}>
@@ -58,7 +59,7 @@ export default function Settings() {
         <View style={styles.card}>
           {customChallenges.length === 0 ? (
             <Text style={styles.empty}>
-              None yet. Add your own below. They come up about half the time.
+              None yet. Add your own below: they come up about half the time.
             </Text>
           ) : (
             customChallenges.map((c, i) => (
@@ -83,6 +84,7 @@ export default function Settings() {
 
       <Section title="Privacy">
         <View style={styles.card}>
+          <InfoRow label="Location" value="Scrambled, hangouts only" />
           <InfoRow label="Location collected" value="None" />
           <InfoRow label="App usage collected" value="None" divider />
         </View>
